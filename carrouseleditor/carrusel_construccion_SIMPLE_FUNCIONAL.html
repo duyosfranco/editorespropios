@@ -463,6 +463,9 @@
                 <button class="button primary" onclick="downloadCurrentSlide()" style="width: 100%; margin-bottom: 10px;">
                     📥 Descargar <span id="downloadCurrentText">ETAPA 1</span>
                 </button>
+                <button class="button" style="width: 100%; margin-bottom: 10px; background: #0EA5E9; color: #fff;" onclick="downloadVideo()">
+                    🎬 Descargar Video (slides + transición)
+                </button>
                 <button class="button success" onclick="downloadAllSlides()" style="width: 100%;">
                     📦 Descargar TODOS los Slides
                 </button>
@@ -495,10 +498,18 @@
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         let currentSlide = 1;
         let stages = [];
         let totalSlides = 5;
+        let currentFormat = 'vertical';
+        const EXPORT_RESOLUTIONS = {
+            vertical: { width: 1080, height: 1920 },
+            story: { width: 1080, height: 1920 },
+            square: { width: 1080, height: 1080 },
+            horizontal: { width: 1920, height: 1080 }
+        };
         
         // Etapas predeterminadas
         const defaultStages = [
@@ -601,7 +612,7 @@
                     <div class="image-upload-section">
                         <label>📸 Imagen de la Etapa ${index + 1}:</label>
                         <input type="file" class="file-input" accept="image/*" data-stage="${index}">
-                        <div id="preview-${index}" class="image-preview" style="display: none;"></div>
+                        <img id="preview-${index}" class="image-preview" style="display: none;" alt="Vista previa etapa ${index + 1}" loading="lazy" decoding="async" />
                         <button type="button" class="remove-image-btn" id="remove-${index}" style="display: none;" data-stage="${index}">🗑️ Quitar imagen</button>
                     </div>
                 `;
@@ -660,6 +671,8 @@
                 if (preview) {
                     preview.src = e.target.result;
                     preview.style.display = 'block';
+                    preview.alt = `Vista previa etapa ${stageIndex + 1}`;
+                    preview.decoding = 'async';
                 }
                 
                 // Mostrar botón de eliminar
@@ -723,6 +736,7 @@
             if (stages[stageIndex].image) {
                 // Mostrar imagen
                 image.src = stages[stageIndex].image.src;
+                image.crossOrigin = 'anonymous';
                 image.style.display = 'block';
                 
                 if (placeholder) {
@@ -861,77 +875,216 @@
         }
         
         // Cambiar formato
-        let currentFormat = 'vertical';
         document.querySelectorAll('.format-option').forEach(option => {
             option.addEventListener('click', function() {
                 document.querySelectorAll('.format-option').forEach(opt => opt.classList.remove('active'));
                 this.classList.add('active');
                 currentFormat = this.dataset.format;
-                
+
                 const preview = document.getElementById('carouselPreview');
                 preview.className = `preview ${currentFormat}`;
             });
         });
-        
+
+        async function waitForImages() {
+            const images = Array.from(document.querySelectorAll('.slide-image, .logo'))
+                .filter(img => img.src);
+
+            await Promise.all(images.map(img => {
+                if (img.complete) {
+                    return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
+                }
+                return new Promise(resolve => {
+                    img.onload = img.onerror = () => resolve();
+                });
+            }));
+        }
+
+        function getExportScale(element) {
+            const rect = element.getBoundingClientRect();
+            const target = EXPORT_RESOLUTIONS[currentFormat] || { width: rect.width, height: rect.height };
+            const scaleBySize = Math.max(target.width / rect.width, target.height / rect.height);
+            return Math.max(2, Math.ceil(Math.min(4, scaleBySize)));
+        }
+
+        async function captureSlideCanvas(slideIndex) {
+            const previousSlide = currentSlide;
+            if (slideIndex !== currentSlide) {
+                goToSlide(slideIndex);
+                await new Promise(resolve => setTimeout(resolve, 220));
+            }
+
+            const element = document.getElementById('carouselPreview');
+            if (!element) {
+                throw new Error('No se encontró el contenedor del carrusel');
+            }
+
+            await waitForImages();
+            const scale = getExportScale(element);
+            const canvas = await html2canvas(element, {
+                backgroundColor: '#ffffff',
+                scale,
+                logging: false,
+                useCORS: true,
+                allowTaint: true,
+                imageTimeout: 15000,
+                scrollX: 0,
+                scrollY: -window.scrollY
+            });
+
+            if (previousSlide !== currentSlide) {
+                goToSlide(previousSlide);
+            }
+
+            return canvas;
+        }
+
+        function canvasToBlob(canvas) {
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(blob => {
+                    if (!blob) {
+                        reject(new Error('No se pudo generar la imagen'));
+                        return;
+                    }
+                    resolve(blob);
+                }, 'image/png', 1);
+            });
+        }
+
         // Descargar slide actual
         async function downloadCurrentSlide() {
             try {
-                showStatus('🔄 Generando slide...', 'success');
-                
-                const element = document.getElementById('carouselPreview');
-                const canvas = await html2canvas(element, {
-                    backgroundColor: '#ffffff',
-                    scale: 2,
-                    logging: false
-                });
-                
-                // Crear y descargar imagen del slide actual
-                canvas.toBlob(function(blob) {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `etapa_${currentSlide}_mc_construcciones.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                });
-                
-                showStatus('✅ Slide descargado exitosamente', 'success');
+                showStatus('🔄 Generando slide en alta calidad...', 'success');
+                const canvas = await captureSlideCanvas(currentSlide);
+                const blob = await canvasToBlob(canvas);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `etapa_${currentSlide}_mc_construcciones.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showStatus('✅ Slide descargado en HD', 'success');
             } catch (error) {
                 console.error('Error al generar slide:', error);
                 showStatus('❌ Error al generar slide', 'error');
             }
         }
-        
+
         // Descargar todos los slides
         async function downloadAllSlides() {
             try {
-                showStatus('🔄 Generando todos los slides...', 'success');
-                
-                const element = document.getElementById('carouselPreview');
-                const canvas = await html2canvas(element, {
-                    backgroundColor: '#ffffff',
-                    scale: 2,
-                    logging: false
-                });
-                
-                // Crear y descargar imagen de todos los slides
-                canvas.toBlob(function(blob) {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `carrusel_completo_${totalSlides}_etapas.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                });
-                
-                showStatus('✅ Carrusel completo descargado', 'success');
+                showStatus('🔄 Generando todos los slides en HD...', 'success');
+                const zip = new JSZip();
+
+                for (let i = 1; i <= totalSlides; i++) {
+                    const canvas = await captureSlideCanvas(i);
+                    const blob = await canvasToBlob(canvas);
+                    zip.file(`etapa_${i}_mc_construcciones.png`, blob);
+                }
+
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(zipBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `carrusel_mc_construcciones_${totalSlides}_etapas.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showStatus('✅ Slides descargados en un ZIP', 'success');
             } catch (error) {
                 console.error('Error al generar carrusel completo:', error);
                 showStatus('❌ Error al generar carrusel completo', 'error');
+            }
+        }
+
+        function drawImageCover(ctx, image, canvas) {
+            const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+            const w = image.width * scale;
+            const h = image.height * scale;
+            const x = (canvas.width - w) / 2;
+            const y = (canvas.height - h) / 2;
+            ctx.drawImage(image, x, y, w, h);
+        }
+
+        async function downloadVideo() {
+            try {
+                showStatus('🎥 Renderizando video a 30fps...', 'success');
+
+                const captures = [];
+                for (let i = 1; i <= totalSlides; i++) {
+                    const canvas = await captureSlideCanvas(i);
+                    const bitmap = await createImageBitmap(canvas);
+                    captures.push({ index: i, bitmap });
+                }
+
+                if (!captures.length) {
+                    throw new Error('No hay slides para exportar');
+                }
+
+                const { width, height } = EXPORT_RESOLUTIONS[currentFormat] || EXPORT_RESOLUTIONS.vertical;
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+
+                const stream = canvas.captureStream(30);
+                const chunks = [];
+                const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+                const recordingDone = new Promise(resolve => {
+                    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                    recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
+                });
+
+                recorder.start();
+
+                const holdFrames = 60; // 2s por slide
+                const fadeFrames = 18; // ~0.6s de transición
+
+                const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+
+                for (let i = 0; i < captures.length; i++) {
+                    // Mostrar slide
+                    for (let f = 0; f < holdFrames; f++) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        drawImageCover(ctx, captures[i].bitmap, canvas);
+                        await nextFrame();
+                    }
+
+                    // Transición con el siguiente slide
+                    if (i < captures.length - 1) {
+                        for (let f = 0; f <= fadeFrames; f++) {
+                            const alpha = f / fadeFrames;
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.save();
+                            ctx.globalAlpha = 1 - alpha;
+                            drawImageCover(ctx, captures[i].bitmap, canvas);
+                            ctx.globalAlpha = alpha;
+                            drawImageCover(ctx, captures[i + 1].bitmap, canvas);
+                            ctx.restore();
+                            await nextFrame();
+                        }
+                    }
+                }
+
+                recorder.stop();
+                const videoBlob = await recordingDone;
+                const url = URL.createObjectURL(videoBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `carrusel_mc_construcciones_${totalSlides}_etapas.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showStatus('✅ Video descargado en WebM', 'success');
+            } catch (error) {
+                console.error('Error al generar video:', error);
+                showStatus('❌ No se pudo generar el video', 'error');
             }
         }
         
