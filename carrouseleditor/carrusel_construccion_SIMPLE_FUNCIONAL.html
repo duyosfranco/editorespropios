@@ -887,7 +887,7 @@
         });
 
         async function waitForImages() {
-            const images = Array.from(document.querySelectorAll('.slide-image, .logo'))
+            const images = Array.from(document.querySelectorAll('.slide-image'))
                 .filter(img => img.src);
 
             await Promise.all(images.map(img => {
@@ -899,73 +899,35 @@
                 });
             }));
         }
-
-        function getExportScale(element) {
-            const rect = element.getBoundingClientRect();
-            const target = EXPORT_RESOLUTIONS[currentFormat] || { width: rect.width, height: rect.height };
-            const scaleBySize = Math.max(target.width / rect.width, target.height / rect.height);
-            return Math.max(2, Math.ceil(Math.min(4, scaleBySize)));
-        }
-
-        async function captureSlideCanvas(slideIndex) {
-            const previousSlide = currentSlide;
-            if (slideIndex !== currentSlide) {
-                goToSlide(slideIndex);
-                await new Promise(resolve => setTimeout(resolve, 220));
-            }
-
-            const element = document.getElementById('carouselPreview');
-            if (!element) {
-                throw new Error('No se encontró el contenedor del carrusel');
-            }
-
-            await waitForImages();
-            const scale = getExportScale(element);
-            const canvas = await html2canvas(element, {
-                backgroundColor: '#ffffff',
-                scale,
-                logging: false,
-                useCORS: true,
-                allowTaint: true,
-                imageTimeout: 15000,
-                scrollX: 0,
-                scrollY: -window.scrollY
-            });
-
-            if (previousSlide !== currentSlide) {
-                goToSlide(previousSlide);
-            }
-
-            return canvas;
-        }
-
-        function canvasToBlob(canvas) {
-            return new Promise((resolve, reject) => {
-                canvas.toBlob(blob => {
-                    if (!blob) {
-                        reject(new Error('No se pudo generar la imagen'));
-                        return;
-                    }
-                    resolve(blob);
-                }, 'image/png', 1);
-            });
-        }
-
+        
         // Descargar slide actual
         async function downloadCurrentSlide() {
             try {
-                showStatus('🔄 Generando slide en alta calidad...', 'success');
-                const canvas = await captureSlideCanvas(currentSlide);
-                const blob = await canvasToBlob(canvas);
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `etapa_${currentSlide}_mc_construcciones.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showStatus('✅ Slide descargado en HD', 'success');
+                showStatus('🔄 Generando slide...', 'success');
+
+                const element = document.getElementById('carouselPreview');
+                await waitForImages();
+                const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                });
+                
+                // Crear y descargar imagen del slide actual
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `etapa_${currentSlide}_mc_construcciones.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+                
+                showStatus('✅ Slide descargado exitosamente', 'success');
             } catch (error) {
                 console.error('Error al generar slide:', error);
                 showStatus('❌ Error al generar slide', 'error');
@@ -975,26 +937,31 @@
         // Descargar todos los slides
         async function downloadAllSlides() {
             try {
-                showStatus('🔄 Generando todos los slides en HD...', 'success');
-                const zip = new JSZip();
+                showStatus('🔄 Generando todos los slides...', 'success');
 
-                for (let i = 1; i <= totalSlides; i++) {
-                    const canvas = await captureSlideCanvas(i);
-                    const blob = await canvasToBlob(canvas);
-                    zip.file(`etapa_${i}_mc_construcciones.png`, blob);
-                }
-
-                const zipBlob = await zip.generateAsync({ type: 'blob' });
-                const url = URL.createObjectURL(zipBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `carrusel_mc_construcciones_${totalSlides}_etapas.zip`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-                showStatus('✅ Slides descargados en un ZIP', 'success');
+                const element = document.getElementById('carouselPreview');
+                await waitForImages();
+                const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                });
+                
+                // Crear y descargar imagen de todos los slides
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `carrusel_completo_${totalSlides}_etapas.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+                
+                showStatus('✅ Carrusel completo descargado', 'success');
             } catch (error) {
                 console.error('Error al generar carrusel completo:', error);
                 showStatus('❌ Error al generar carrusel completo', 'error');
