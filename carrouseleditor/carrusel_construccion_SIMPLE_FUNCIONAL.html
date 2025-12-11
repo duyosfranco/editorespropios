@@ -1284,7 +1284,7 @@
         }
 
         async function renderVideoWithRecorder(canvas, ctx, captures) {
-            const stream = canvas.captureStream(30);
+            const stream = canvas.captureStream(60);
             const chunks = [];
             const mimeOptions = [
                 'video/webm;codecs=vp9',
@@ -1307,14 +1307,17 @@
 
         async function renderVideoWithWhammy(canvas, ctx, captures) {
             await ensureLibraries();
-            const video = new Whammy.Video(30);
+            const video = new Whammy.Video(60);
             await paintFrames(ctx, canvas, captures, frame => video.add(frame));
             return video.compile(false);
         }
 
         async function paintFrames(ctx, canvas, captures, tapFrame) {
-            const holdFrames = 60; // 2s por slide
-            const fadeFrames = 18; // ~0.6s de transición
+            const holdFrames = 120; // 2s por slide a 60fps
+            const fadeFrames = 36; // ~0.6s de transición a 60fps
+
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
 
             for (let i = 0; i < captures.length; i++) {
                 for (let f = 0; f < holdFrames; f++) {
@@ -1348,7 +1351,7 @@
                     showStatus('⚠️ Tu navegador no soporta grabación directa, generando video alternativo...', 'error');
                 }
 
-                showStatus('🎥 Renderizando video a 30fps...', 'success');
+                showStatus('🎥 Renderizando video a 60fps...', 'success');
 
                 const captures = [];
                 for (let i = 1; i <= totalSlides; i++) {
