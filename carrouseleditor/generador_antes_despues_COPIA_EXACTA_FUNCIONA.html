@@ -485,7 +485,7 @@
                             <div class="slide-header">
                                 <div class="slide-text" id="slide-0-text">ANTES</div>
                                 <div class="slide-line"></div>
-                                <img class="slide-logo" src="logo_mc_construcciones_correcto.jpg" alt="MC Construcciones" />
+                                <img class="slide-logo" src="${LOGO_DATA_URI}" alt="MC Construcciones" loading="lazy" decoding="async" />
                             </div>
                             <div class="slide-content">
                                 <div class="slide-placeholder">
@@ -493,7 +493,7 @@
                                     <div>Imagen ANTES</div>
                                     <div>Subí tu foto aquí</div>
                                 </div>
-                                <img class="slide-image" id="slide-image-0" style="display: none;">
+                                <img class="slide-image" id="slide-image-0" style="display: none;" loading="lazy" decoding="async">
                             </div>
                         </div>
                         
@@ -502,7 +502,7 @@
                             <div class="slide-header">
                                 <div class="slide-text" id="slide-1-text">DESPUÉS</div>
                                 <div class="slide-line"></div>
-                                <img class="slide-logo" src="logo_mc_construcciones_correcto.jpg" alt="MC Construcciones" />
+                                <img class="slide-logo" src="${LOGO_DATA_URI}" alt="MC Construcciones" loading="lazy" decoding="async" />
                             </div>
                             <div class="slide-content">
                                 <div class="slide-placeholder">
@@ -510,7 +510,7 @@
                                     <div>Imagen DESPUÉS</div>
                                     <div>Subí tu foto aquí</div>
                                 </div>
-                                <img class="slide-image" id="slide-image-1" style="display: none;">
+                                <img class="slide-image" id="slide-image-1" style="display: none;" loading="lazy" decoding="async">
                             </div>
                         </div>
                     </div>
@@ -529,6 +529,8 @@
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
+        const LOGO_DATA_URI = "data:image/jpeg;base64,$(cat /tmp/logo_b64.txt)";
+
         // Variables globales
         let stages = [];
         let totalSlides = 2;
@@ -851,6 +853,7 @@
         // Descargar slide actual
         async function downloadCurrent() {
             try {
+                await ensureLibraries();
                 showStatus('🔄 Generando imagen...', 'success');
 
                 const element = document.getElementById('preview');
@@ -886,6 +889,7 @@
         // Descargar ambos slides
         async function downloadBoth() {
             try {
+                await ensureLibraries();
                 showStatus('🔄 Generando ambas imágenes...', 'success');
 
                 // Descargar slide antes
