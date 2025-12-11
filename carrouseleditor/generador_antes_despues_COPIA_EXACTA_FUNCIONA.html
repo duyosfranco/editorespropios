@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generador Antes/Después - MC Construcciones</title>
     <style>
+        :root {
+            --primary-color: #1E3A8A;
+            --accent-color: #FFC107;
+            --header-gradient: radial-gradient(circle, #0033cc 0%, #000d33 100%);
+        }
+
         body {
             margin: 0;
             padding: 20px;
@@ -89,7 +95,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle, #0033cc 0%, #000d33 100%);
+            background: var(--header-gradient);
         }
         
         .slide-content {
@@ -125,7 +131,7 @@
             transform: translate(-50%, -50%);
             font-size: 28px;
             font-weight: 900;
-            color: #FFC107;
+            color: var(--accent-color);
             text-shadow: 3px 3px 0px rgba(0,0,0,0.8);
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -138,7 +144,7 @@
             transform: translateX(-50%);
             width: 80%;
             height: 3px;
-            background: #FFC107;
+            background: var(--accent-color);
         }
         
         .slide-logo {
@@ -166,7 +172,7 @@
             padding: 12px 20px;
             border: none;
             border-radius: 8px;
-            background: #1E3A8A;
+            background: var(--primary-color);
             color: white;
             cursor: pointer;
             font-weight: bold;
@@ -207,7 +213,7 @@
         }
         
         .button.primary {
-            background: #1E3A8A;
+            background: var(--primary-color);
             color: white;
         }
         
@@ -326,12 +332,30 @@
         }
         
         .format-option:hover {
-            border-color: #1E3A8A;
+            border-color: var(--primary-color);
         }
-        
+
         .format-option.active {
-            border-color: #1E3A8A;
+            border-color: var(--primary-color);
             background: #eff6ff;
+        }
+
+        .preview.mc-grid {
+            background-image: repeating-linear-gradient(
+                0deg,
+                rgba(255, 255, 255, 0.04),
+                rgba(255, 255, 255, 0.04) 1px,
+                transparent 1px,
+                transparent 20px
+            ),
+            repeating-linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0.04),
+                rgba(255, 255, 255, 0.04) 1px,
+                transparent 1px,
+                transparent 20px
+            ),
+            #333;
         }
         
         .status {
@@ -377,6 +401,21 @@
                 <div class="stage-input-group">
                     <label>Texto "Después":</label>
                     <input type="text" id="afterText" value="DESPUÉS">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>🎯 IDENTIDAD MC</label>
+                <div class="stage-input-group">
+                    <label>Paleta de color:</label>
+                    <select id="brandPalette" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #d1d5db;">
+                        <option value="mc">Azul MC + Dorado</option>
+                        <option value="premium">Marino + Dorado profundo</option>
+                        <option value="industrial">Gris grafito + Naranja obra</option>
+                    </select>
+                </div>
+                <div class="stage-input-group">
+                    <label><input type="checkbox" id="gridOverlay"> Textura de planos (grilla)</label>
                 </div>
             </div>
             
@@ -495,6 +534,24 @@
         let totalSlides = 2;
         let currentSlide = 1;
         let currentFormat = 'vertical';
+
+        const brandPalettes = {
+            mc: {
+                primary: '#1E3A8A',
+                accent: '#FFC107',
+                header: 'radial-gradient(circle, #0033cc 0%, #000d33 100%)'
+            },
+            premium: {
+                primary: '#0b1c3f',
+                accent: '#d4a017',
+                header: 'linear-gradient(135deg, #0b1c3f 0%, #050b1f 100%)'
+            },
+            industrial: {
+                primary: '#111827',
+                accent: '#f97316',
+                header: 'linear-gradient(135deg, #111827 0%, #0b1220 100%)'
+            }
+        };
         
         // Etapas predeterminadas
         const defaultStages = [
@@ -545,6 +602,20 @@
             // Event listeners para botones de descarga
             document.getElementById('downloadCurrent').addEventListener('click', downloadCurrent);
             document.getElementById('downloadBoth').addEventListener('click', downloadBoth);
+
+            const paletteSelect = document.getElementById('brandPalette');
+            if (paletteSelect) {
+                paletteSelect.addEventListener('change', function() {
+                    applyBrandPalette(this.value);
+                });
+            }
+
+            const gridToggle = document.getElementById('gridOverlay');
+            if (gridToggle) {
+                gridToggle.addEventListener('change', function() {
+                    toggleGridOverlay(this.checked);
+                });
+            }
             
             // Event listeners para cambio de formato
             document.querySelectorAll('.format-option').forEach(option => {
@@ -575,6 +646,8 @@
                 stages[1].title = this.value;
                 updateSlideTexts();
             });
+
+            applyBrandPalette('mc');
         }
         
         // Manejo de carga de imagen
@@ -656,6 +729,7 @@
             if (stages[stageIndex].image) {
                 // Mostrar imagen
                 slideImage.src = stages[stageIndex].image.src;
+                slideImage.crossOrigin = 'anonymous';
                 slideImage.style.display = 'block';
                 
                 if (placeholder) {
@@ -724,6 +798,41 @@
                 downloadBtn.textContent = `📥 Descargar ${stages[currentSlide - 1].title}`;
             }
         }
+
+        function applyBrandPalette(key) {
+            const palette = brandPalettes[key] || brandPalettes.mc;
+            document.documentElement.style.setProperty('--primary-color', palette.primary);
+            document.documentElement.style.setProperty('--accent-color', palette.accent);
+            document.documentElement.style.setProperty('--header-gradient', palette.header);
+
+            const buttons = document.querySelectorAll('.button.primary, .nav-button');
+            buttons.forEach(btn => btn.style.background = palette.primary);
+            const lines = document.querySelectorAll('.slide-line');
+            lines.forEach(line => line.style.background = palette.accent);
+            const titles = document.querySelectorAll('.slide-text');
+            titles.forEach(title => title.style.color = palette.accent);
+        }
+
+        function toggleGridOverlay(enabled) {
+            const preview = document.getElementById('preview');
+            if (preview) {
+                preview.classList.toggle('mc-grid', enabled);
+            }
+        }
+
+        async function waitForImages() {
+            const images = Array.from(document.querySelectorAll('.slide-image'))
+                .filter(img => img.src);
+
+            await Promise.all(images.map(img => {
+                if (img.complete) {
+                    return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
+                }
+                return new Promise(resolve => {
+                    img.onload = img.onerror = () => resolve();
+                });
+            }));
+        }
         
         // Actualizar controles
         function updateControls() {
@@ -743,12 +852,15 @@
         async function downloadCurrent() {
             try {
                 showStatus('🔄 Generando imagen...', 'success');
-                
+
                 const element = document.getElementById('preview');
+                await waitForImages();
                 const canvas = await html2canvas(element, {
                     backgroundColor: '#ffffff',
                     scale: 2,
-                    logging: false
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
                 });
                 
                 // Crear y descargar imagen
@@ -775,7 +887,7 @@
         async function downloadBoth() {
             try {
                 showStatus('🔄 Generando ambas imágenes...', 'success');
-                
+
                 // Descargar slide antes
                 goToSlide(1);
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -796,10 +908,13 @@
         // Descargar slide individual
         async function downloadSingleSlide(suffix) {
             const element = document.getElementById('preview');
+            await waitForImages();
             const canvas = await html2canvas(element, {
                 backgroundColor: '#ffffff',
                 scale: 2,
-                logging: false
+                logging: false,
+                useCORS: true,
+                allowTaint: true
             });
             
             return new Promise((resolve) => {
