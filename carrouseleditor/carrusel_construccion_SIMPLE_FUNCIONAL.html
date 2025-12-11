@@ -723,6 +723,7 @@
             if (stages[stageIndex].image) {
                 // Mostrar imagen
                 image.src = stages[stageIndex].image.src;
+                image.crossOrigin = 'anonymous';
                 image.style.display = 'block';
                 
                 if (placeholder) {
@@ -872,17 +873,34 @@
                 preview.className = `preview ${currentFormat}`;
             });
         });
+
+        async function waitForImages() {
+            const images = Array.from(document.querySelectorAll('.slide-image'))
+                .filter(img => img.src);
+
+            await Promise.all(images.map(img => {
+                if (img.complete) {
+                    return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
+                }
+                return new Promise(resolve => {
+                    img.onload = img.onerror = () => resolve();
+                });
+            }));
+        }
         
         // Descargar slide actual
         async function downloadCurrentSlide() {
             try {
                 showStatus('🔄 Generando slide...', 'success');
-                
+
                 const element = document.getElementById('carouselPreview');
+                await waitForImages();
                 const canvas = await html2canvas(element, {
                     backgroundColor: '#ffffff',
                     scale: 2,
-                    logging: false
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
                 });
                 
                 // Crear y descargar imagen del slide actual
@@ -908,12 +926,15 @@
         async function downloadAllSlides() {
             try {
                 showStatus('🔄 Generando todos los slides...', 'success');
-                
+
                 const element = document.getElementById('carouselPreview');
+                await waitForImages();
                 const canvas = await html2canvas(element, {
                     backgroundColor: '#ffffff',
                     scale: 2,
-                    logging: false
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
                 });
                 
                 // Crear y descargar imagen de todos los slides
