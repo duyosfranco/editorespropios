@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador Antes/Después - MC Construcciones</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        
+        .editor {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 400px;
+            flex-shrink: 0;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 1;
+            align-items: center;
+        }
+        
+        .preview-wrapper {
+            position: relative;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .preview {
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            background: #333;
+            margin: 0 auto;
+        }
+        
+        /* Tamaños por formato */
+        .preview.vertical { width: 270px; height: 480px; }
+        .preview.square { width: 400px; height: 400px; }
+        .preview.horizontal { width: 480px; height: 270px; }
+        .preview.story { width: 270px; height: 480px; }
+        
+        .comparison-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+        
+        .comparison-slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .comparison-slide.active {
+            opacity: 1;
+        }
+        
+        .slide-header {
+            position: relative;
+            height: 30%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, #0033cc 0%, #000d33 100%);
+        }
+        
+        .slide-content {
+            position: relative;
+            height: 70%;
+            overflow: hidden;
+        }
+        
+        .slide-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .slide-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .slide-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 28px;
+            font-weight: 900;
+            color: #FFC107;
+            text-shadow: 3px 3px 0px rgba(0,0,0,0.8);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .slide-line {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 3px;
+            background: #FFC107;
+        }
+        
+        .slide-logo {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: white;
+            padding: 2px;
+        }
+        
+
+        
+        .comparison-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            gap: 10px;
+        }
+        
+        .nav-button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #1E3A8A;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .nav-button:hover {
+            background: #1e40af;
+        }
+        
+        .nav-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #1E3A8A;
+            font-size: 14px;
+        }
+        
+        .button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .button.primary {
+            background: #1E3A8A;
+            color: white;
+        }
+        
+        .button.primary:hover {
+            background: #1e40af;
+        }
+        
+        .button.success {
+            background: #10B981;
+            color: white;
+        }
+        
+        .button.success:hover {
+            background: #059669;
+        }
+        
+        .stage-input-group {
+            margin-bottom: 15px;
+        }
+        
+        .stage-input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #374151;
+            font-weight: normal;
+        }
+        
+        .stage-input-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .stage-input-group input:focus {
+            outline: none;
+            border-color: #1E3A8A;
+        }
+        
+        .image-upload-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: #F8FAFC;
+            border-radius: 8px;
+            border: 2px dashed #CBD5E1;
+        }
+        
+        .image-upload-section label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            color: #1E3A8A;
+            margin-bottom: 8px;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #CBD5E1;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 14px;
+            color: #64748B;
+        }
+        
+        .file-input:hover {
+            border-color: #1E3A8A;
+            background: #F1F5F9;
+        }
+        
+        .file-input.has-file {
+            border-color: #10B981;
+            background: #F0FDF4;
+            color: #059669;
+        }
+        
+        .image-preview {
+            margin-top: 10px;
+            width: 100%;
+            height: 80px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 2px solid #E2E8F0;
+        }
+        
+        .remove-image-btn {
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #EF4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .format-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .format-option {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .format-option:hover {
+            border-color: #1E3A8A;
+        }
+        
+        .format-option.active {
+            border-color: #1E3A8A;
+            background: #eff6ff;
+        }
+        
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .status.success {
+            background: #10B981;
+        }
+        
+        .status.error {
+            background: #EF4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Panel de Editor -->
+        <div class="editor">
+            <h2>🎨 Generador Antes/Después</h2>
+            
+            <!-- Configuración -->
+            <div class="control-group">
+                <label>⚙️ CONFIGURACIÓN</label>
+                <div class="stage-input-group">
+                    <label>Título Principal:</label>
+                    <input type="text" id="mainTitle" value="TRANSFORMACIÓN">
+                </div>
+                <div class="stage-input-group">
+                    <label>Texto "Antes":</label>
+                    <input type="text" id="beforeText" value="ANTES">
+                </div>
+                <div class="stage-input-group">
+                    <label>Texto "Después":</label>
+                    <input type="text" id="afterText" value="DESPUÉS">
+                </div>
+            </div>
+            
+            <!-- Imágenes -->
+            <div class="control-group">
+                <label>📸 IMÁGENES</label>
+                
+                <!-- Editor para ANTES -->
+                <div class="stage-input-group">
+                    <label>🖼️ Imagen "ANTES":</label>
+                    <input type="file" id="file-input-0" class="file-input" accept="image/*" data-stage="0">
+                    <div id="preview-0" class="image-preview" style="display: none;"></div>
+                    <button type="button" class="remove-image-btn" id="remove-0" style="display: none;" data-stage="0">🗑️ Quitar imagen</button>
+                </div>
+                
+                <!-- Editor para DESPUÉS -->
+                <div class="stage-input-group">
+                    <label>🖼️ Imagen "DESPUÉS":</label>
+                    <input type="file" id="file-input-1" class="file-input" accept="image/*" data-stage="1">
+                    <div id="preview-1" class="image-preview" style="display: none;"></div>
+                    <button type="button" class="remove-image-btn" id="remove-1" style="display: none;" data-stage="1">🗑️ Quitar imagen</button>
+                </div>
+            </div>
+            
+            <!-- Formato Selector -->
+            <div class="control-group">
+                <label>📐 Formato de Salida</label>
+                <div class="format-selector">
+                    <div class="format-option active" data-format="vertical">
+                        <strong>9:16</strong><br>
+                        <small>Vertical</small>
+                    </div>
+                    <div class="format-option" data-format="square">
+                        <strong>1:1</strong><br>
+                        <small>Cuadrado</small>
+                    </div>
+                    <div class="format-option" data-format="horizontal">
+                        <strong>16:9</strong><br>
+                        <small>Horizontal</small>
+                    </div>
+                    <div class="format-option" data-format="story">
+                        <strong>9:16</strong><br>
+                        <small>Story</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Acciones -->
+            <div class="control-group">
+                <label>⚡ ACCIONES</label>
+                <button class="button primary" id="downloadCurrent" style="width: 100%; margin-bottom: 10px;">
+                    📥 Descargar Actual
+                </button>
+                <button class="button success" id="downloadBoth" style="width: 100%;">
+                    📦 Descargar AMBOS
+                </button>
+            </div>
+        </div>
+        
+        <!-- Panel de Vista Previa -->
+        <div class="preview-container">
+            <div class="preview-wrapper">
+                <div class="preview vertical" id="preview">
+                    <div class="comparison-container">
+                        <!-- Slide ANTES -->
+                        <div class="comparison-slide active" id="slide-0">
+                            <div class="slide-header">
+                                <div class="slide-text" id="slide-0-text">ANTES</div>
+                                <div class="slide-line"></div>
+                                <img class="slide-logo" src="logo_mc_construcciones_correcto.jpg" alt="MC Construcciones" />
+                            </div>
+                            <div class="slide-content">
+                                <div class="slide-placeholder">
+                                    <div style="font-size: 24px; margin-bottom: 10px;">🏗️</div>
+                                    <div>Imagen ANTES</div>
+                                    <div>Subí tu foto aquí</div>
+                                </div>
+                                <img class="slide-image" id="slide-image-0" style="display: none;">
+                            </div>
+                        </div>
+                        
+                        <!-- Slide DESPUÉS -->
+                        <div class="comparison-slide" id="slide-1">
+                            <div class="slide-header">
+                                <div class="slide-text" id="slide-1-text">DESPUÉS</div>
+                                <div class="slide-line"></div>
+                                <img class="slide-logo" src="logo_mc_construcciones_correcto.jpg" alt="MC Construcciones" />
+                            </div>
+                            <div class="slide-content">
+                                <div class="slide-placeholder">
+                                    <div style="font-size: 24px; margin-bottom: 10px;">✨</div>
+                                    <div>Imagen DESPUÉS</div>
+                                    <div>Subí tu foto aquí</div>
+                                </div>
+                                <img class="slide-image" id="slide-image-1" style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Controles de Navegación -->
+                <div class="comparison-controls">
+                    <button class="nav-button" id="prevBtn">⬅️ Antes</button>
+                    <span style="color: #6B7280; align-self: center;" id="slideCounter">ANTES (1/2)</span>
+                    <button class="nav-button" id="nextBtn">Después ➡️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        // Variables globales
+        let stages = [];
+        let totalSlides = 2;
+        let currentSlide = 1;
+        let currentFormat = 'vertical';
+        
+        // Etapas predeterminadas
+        const defaultStages = [
+            {
+                title: "ANTES",
+                subtitle: "Imagen inicial",
+                image: null
+            },
+            {
+                title: "DESPUÉS",
+                subtitle: "Imagen final",
+                image: null
+            }
+        ];
+        
+        // Inicializar el generador
+        function initializeCarousel() {
+            stages = JSON.parse(JSON.stringify(defaultStages));
+            totalSlides = stages.length;
+            setupEventListeners();
+            updateControls();
+            updateSlideCounter();
+            updateSlideTexts();
+        }
+        
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Agregar event listeners para inputs de imagen
+            document.querySelectorAll('.file-input').forEach(input => {
+                input.addEventListener('change', function() {
+                    const stageIndex = parseInt(this.getAttribute('data-stage'));
+                    handleImageUpload(stageIndex, this);
+                });
+            });
+            
+            // Agregar event listeners para botones eliminar
+            document.querySelectorAll('.remove-image-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const stageIndex = parseInt(this.getAttribute('data-stage'));
+                    removeImage(stageIndex);
+                });
+            });
+            
+            // Event listeners para navegación
+            document.getElementById('prevBtn').addEventListener('click', previousSlide);
+            document.getElementById('nextBtn').addEventListener('click', nextSlide);
+            
+            // Event listeners para botones de descarga
+            document.getElementById('downloadCurrent').addEventListener('click', downloadCurrent);
+            document.getElementById('downloadBoth').addEventListener('click', downloadBoth);
+            
+            // Event listeners para cambio de formato
+            document.querySelectorAll('.format-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    currentFormat = this.dataset.format;
+                    const preview = document.getElementById('preview');
+                    preview.className = `preview ${currentFormat}`;
+                    
+                    // Actualizar botones activos
+                    document.querySelectorAll('.format-option').forEach(opt => {
+                        opt.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                });
+            });
+            
+            // Event listeners para inputs de texto
+            document.getElementById('mainTitle').addEventListener('input', function() {
+                updateSlideTexts();
+            });
+            
+            document.getElementById('beforeText').addEventListener('input', function() {
+                stages[0].title = this.value;
+                updateSlideTexts();
+            });
+            
+            document.getElementById('afterText').addEventListener('input', function() {
+                stages[1].title = this.value;
+                updateSlideTexts();
+            });
+        }
+        
+        // Manejo de carga de imagen
+        function handleImageUpload(stageIndex, input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            // Validar que es una imagen
+            if (!file.type.startsWith('image/')) {
+                showStatus('❌ Solo se permiten archivos de imagen', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Guardar imagen en el array de etapas
+                stages[stageIndex].image = {
+                    src: e.target.result,
+                    name: file.name
+                };
+                
+                // Actualizar preview
+                const preview = document.getElementById(`preview-${stageIndex}`);
+                if (preview) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                    preview.style.display = 'block';
+                }
+                
+                // Mostrar botón de eliminar
+                const removeBtn = document.getElementById(`remove-${stageIndex}`);
+                if (removeBtn) {
+                    removeBtn.style.display = 'inline-block';
+                }
+                
+                // Actualizar slide
+                updateSlideImage(stageIndex);
+                
+                showStatus(`✅ Imagen cargada para Slide ${stageIndex + 1}`, 'success');
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        // Eliminar imagen
+        function removeImage(stageIndex) {
+            // Limpiar imagen
+            stages[stageIndex].image = null;
+            
+            // Limpiar preview
+            const preview = document.getElementById(`preview-${stageIndex}`);
+            if (preview) {
+                preview.style.display = 'none';
+                preview.innerHTML = '';
+            }
+            
+            // Limpiar input
+            const input = document.getElementById(`file-input-${stageIndex}`);
+            if (input) {
+                input.value = '';
+            }
+            
+            // Ocultar botón de eliminar
+            const removeBtn = document.getElementById(`remove-${stageIndex}`);
+            if (removeBtn) {
+                removeBtn.style.display = 'none';
+            }
+            
+            // Actualizar slide
+            updateSlideImage(stageIndex);
+            
+            showStatus(`🗑️ Imagen eliminada del Slide ${stageIndex + 1}`, 'success');
+        }
+        
+        // Actualizar imagen del slide
+        function updateSlideImage(stageIndex) {
+            const slideImage = document.getElementById(`slide-image-${stageIndex}`);
+            const placeholder = slideImage.parentElement.querySelector('.slide-placeholder');
+            
+            if (stages[stageIndex].image) {
+                // Mostrar imagen
+                slideImage.src = stages[stageIndex].image.src;
+                slideImage.style.display = 'block';
+                
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+            } else {
+                // Mostrar placeholder
+                slideImage.style.display = 'none';
+                
+                if (placeholder) {
+                    placeholder.style.display = 'flex';
+                }
+            }
+        }
+        
+        // Actualizar textos de los slides
+        function updateSlideTexts() {
+            for (let i = 0; i < stages.length; i++) {
+                const slideText = document.getElementById(`slide-${i}-text`);
+                if (slideText) {
+                    slideText.textContent = stages[i].title;
+                }
+            }
+        }
+        
+        // Navegación
+        function goToSlide(slideNumber) {
+            // Remover clase active del slide actual
+            document.querySelector('.comparison-slide.active').classList.remove('active');
+            
+            // Activar nuevo slide
+            const slides = document.querySelectorAll('.comparison-slide');
+            if (slides[slideNumber - 1]) {
+                slides[slideNumber - 1].classList.add('active');
+            }
+            
+            currentSlide = slideNumber;
+            updateSlideCounter();
+            updateDownloadButton();
+        }
+        
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                goToSlide(currentSlide + 1);
+            }
+        }
+        
+        function previousSlide() {
+            if (currentSlide > 1) {
+                goToSlide(currentSlide - 1);
+            }
+        }
+        
+        // Actualizar contador
+        function updateSlideCounter() {
+            const counter = document.getElementById('slideCounter');
+            if (counter) {
+                counter.textContent = `${stages[currentSlide - 1].title} (${currentSlide}/${totalSlides})`;
+            }
+        }
+        
+        // Actualizar botón de descarga
+        function updateDownloadButton() {
+            const downloadBtn = document.getElementById('downloadCurrent');
+            if (downloadBtn) {
+                downloadBtn.textContent = `📥 Descargar ${stages[currentSlide - 1].title}`;
+            }
+        }
+        
+        // Actualizar controles
+        function updateControls() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            if (prevBtn) {
+                prevBtn.disabled = currentSlide <= 1;
+            }
+            
+            if (nextBtn) {
+                nextBtn.disabled = currentSlide >= totalSlides;
+            }
+        }
+        
+        // Descargar slide actual
+        async function downloadCurrent() {
+            try {
+                showStatus('🔄 Generando imagen...', 'success');
+                
+                const element = document.getElementById('preview');
+                const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    logging: false
+                });
+                
+                // Crear y descargar imagen
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    const slideNames = ['antes', 'después'];
+                    a.href = url;
+                    a.download = `${slideNames[currentSlide - 1]}_${document.getElementById('mainTitle').value.toLowerCase()}_${currentFormat}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+                
+                showStatus('✅ Imagen descargada', 'success');
+            } catch (error) {
+                console.error('Error al generar imagen:', error);
+                showStatus('❌ Error al generar imagen', 'error');
+            }
+        }
+        
+        // Descargar ambos slides
+        async function downloadBoth() {
+            try {
+                showStatus('🔄 Generando ambas imágenes...', 'success');
+                
+                // Descargar slide antes
+                goToSlide(1);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await downloadSingleSlide('antes');
+                
+                // Descargar slide después
+                goToSlide(2);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await downloadSingleSlide('después');
+                
+                showStatus('✅ Ambas imágenes descargadas', 'success');
+            } catch (error) {
+                console.error('Error al generar imágenes:', error);
+                showStatus('❌ Error al generar imágenes', 'error');
+            }
+        }
+        
+        // Descargar slide individual
+        async function downloadSingleSlide(suffix) {
+            const element = document.getElementById('preview');
+            const canvas = await html2canvas(element, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                logging: false
+            });
+            
+            return new Promise((resolve) => {
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${suffix}_${document.getElementById('mainTitle').value.toLowerCase()}_${currentFormat}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    resolve();
+                });
+            });
+        }
+        
+        // Mostrar mensajes de estado
+        function showStatus(message, type = 'success') {
+            const status = document.createElement('div');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            document.body.appendChild(status);
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                if (status.parentNode) {
+                    status.parentNode.removeChild(status);
+                }
+            }, 3000);
+        }
+        
+        // Controles de teclado
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') previousSlide();
+            if (e.key === 'ArrowRight') nextSlide();
+        });
+        
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCarousel();
+        });
+    </script>
+</body>
+</html>

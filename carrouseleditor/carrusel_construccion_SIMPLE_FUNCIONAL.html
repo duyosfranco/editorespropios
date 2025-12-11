@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrusel MC Construcciones - Funcional</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        
+        .editor {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 400px;
+            flex-shrink: 0;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 1;
+            align-items: center;
+        }
+        
+        .carousel-wrapper {
+            position: relative;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .preview {
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            background: #333;
+            margin: 0 auto;
+        }
+        
+        /* Tamaños por formato */
+        .preview.vertical { width: 270px; height: 480px; }
+        .preview.square { width: 400px; height: 400px; }
+        .preview.horizontal { width: 480px; height: 270px; }
+        .preview.story { width: 270px; height: 480px; }
+        
+        .image-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .slide {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        
+        .slide.active {
+            opacity: 1;
+        }
+        
+        .slide-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .slide-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .text-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            color: white;
+            padding: 30px 20px 20px;
+            text-align: center;
+        }
+        
+        .text-line1 {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .text-line2 {
+            font-size: 16px;
+            font-weight: normal;
+            color: #FFD700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .slide-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 165, 0, 0.9);
+            color: #1E3A8A;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 10;
+        }
+        
+        .logo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            z-index: 10;
+            border-radius: 8px;
+            background: white;
+            padding: 2px;
+        }
+        
+        .carousel-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            gap: 10px;
+        }
+        
+        .nav-button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #1E3A8A;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        .nav-button:hover {
+            background: #1e40af;
+        }
+        
+        .nav-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ddd;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .dot.active {
+            background: #1E3A8A;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #1E3A8A;
+            font-size: 14px;
+        }
+        
+        .button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .button.primary {
+            background: #1E3A8A;
+            color: white;
+        }
+        
+        .button.primary:hover {
+            background: #1e40af;
+        }
+        
+        .button.success {
+            background: #10B981;
+            color: white;
+        }
+        
+        .button.success:hover {
+            background: #059669;
+        }
+        
+        .button.danger {
+            background: #EF4444;
+            color: white;
+        }
+        
+        .button.danger:hover {
+            background: #DC2626;
+        }
+        
+        .stage-editor {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .stage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .stage-title {
+            font-weight: bold;
+            color: #1E3A8A;
+            font-size: 16px;
+        }
+        
+        .stage-input-group {
+            margin-bottom: 15px;
+        }
+        
+        .stage-input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #374151;
+            font-weight: normal;
+        }
+        
+        .stage-input-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .stage-input-group input:focus {
+            outline: none;
+            border-color: #1E3A8A;
+        }
+        
+        .image-upload-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: #F8FAFC;
+            border-radius: 8px;
+            border: 2px dashed #CBD5E1;
+        }
+        
+        .image-upload-section label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            color: #1E3A8A;
+            margin-bottom: 8px;
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #CBD5E1;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 14px;
+            color: #64748B;
+        }
+        
+        .file-input:hover {
+            border-color: #1E3A8A;
+            background: #F1F5F9;
+        }
+        
+        .image-preview {
+            margin-top: 10px;
+            width: 100%;
+            height: 80px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 2px solid #E2E8F0;
+        }
+        
+        .remove-image-btn {
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #EF4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .format-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .format-option {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .format-option:hover {
+            border-color: #1E3A8A;
+        }
+        
+        .format-option.active {
+            border-color: #1E3A8A;
+            background: #eff6ff;
+        }
+        
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .status.success {
+            background: #10B981;
+        }
+        
+        .status.error {
+            background: #EF4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Panel de Editor -->
+        <div class="editor">
+            <h2>🎨 Editor MC Construcciones</h2>
+            
+            <!-- Control de Etapas -->
+            <div class="control-group">
+                <label>➕ GESTIÓN DE ETAPAS</label>
+                <button class="button success" onclick="addStage()" style="width: 100%; margin-bottom: 10px;">
+                    ➕ Agregar Nueva Etapa
+                </button>
+                <button class="button danger" onclick="removeStage()" style="width: 100%;" id="removeBtn" disabled>
+                    🗑️ Eliminar Última Etapa
+                </button>
+            </div>
+            
+            <!-- Etapas Dinámicas -->
+            <div id="stagesContainer">
+                <!-- Las etapas se agregarán aquí dinámicamente -->
+            </div>
+            
+            <!-- Formato Selector -->
+            <div class="control-group">
+                <label>📐 Formato de Salida</label>
+                <div class="format-selector">
+                    <div class="format-option active" data-format="vertical">
+                        <strong>9:16</strong><br>
+                        <small>Vertical</small>
+                    </div>
+                    <div class="format-option" data-format="square">
+                        <strong>1:1</strong><br>
+                        <small>Cuadrado</small>
+                    </div>
+                    <div class="format-option" data-format="horizontal">
+                        <strong>16:9</strong><br>
+                        <small>Horizontal</small>
+                    </div>
+                    <div class="format-option" data-format="story">
+                        <strong>9:16</strong><br>
+                        <small>Story</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Acciones -->
+            <div class="control-group">
+                <label>⚡ ACCIONES</label>
+                <div style="font-size: 12px; color: #6B7280; margin-bottom: 10px; padding: 8px; background: #F3F4F6; border-radius: 6px;">
+                    📍 <strong>Slide Actual:</strong> <span id="currentSlideInfo">ETAPA 1</span>
+                </div>
+                <button class="button primary" onclick="downloadCurrentSlide()" style="width: 100%; margin-bottom: 10px;">
+                    📥 Descargar <span id="downloadCurrentText">ETAPA 1</span>
+                </button>
+                <button class="button success" onclick="downloadAllSlides()" style="width: 100%;">
+                    📦 Descargar TODOS los Slides
+                </button>
+            </div>
+        </div>
+        
+        <!-- Panel de Vista Previa -->
+        <div class="preview-container">
+            <div class="carousel-wrapper">
+                <div class="preview" id="carouselPreview">
+                    <div class="image-container" id="carouselSlides">
+                        <!-- Los slides se generarán dinámicamente -->
+                    </div>
+                </div>
+                
+                <!-- Controles de Navegación -->
+                <div class="carousel-controls">
+                    <button class="nav-button" onclick="previousSlide()" id="prevBtn">⬅️ Anterior</button>
+                    <span style="color: #6B7280; align-self: center;" id="slideCounter">1 / 5</span>
+                    <button class="nav-button" onclick="nextSlide()" id="nextBtn">Siguiente ➡️</button>
+                </div>
+                
+                <!-- Indicadores de Puntos -->
+                <div class="dots" id="dotsContainer">
+                    <!-- Los dots se generarán dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        let currentSlide = 1;
+        let stages = [];
+        let totalSlides = 5;
+        
+        // Etapas predeterminadas
+        const defaultStages = [
+            {
+                title: "ESTRUCTURA INICIAL",
+                subtitle: "Albañilería y cimientos",
+                image: null
+            },
+            {
+                title: "ALBAÑILERÍA", 
+                subtitle: "Construcción de chimenea",
+                image: null
+            },
+            {
+                title: "INSTALACIONES",
+                subtitle: "Pladur y sistemas eléctricos",
+                image: null
+            },
+            {
+                title: "ACABADOS",
+                subtitle: "Terminaciones y detalles",
+                image: null
+            },
+            {
+                title: "RESULTADO FINAL",
+                subtitle: "Transformación completa",
+                image: null
+            }
+        ];
+        
+        // Inicializar el carrusel
+        function initializeCarousel() {
+            stages = JSON.parse(JSON.stringify(defaultStages));
+            totalSlides = stages.length;
+            renderStagesEditor();
+            renderSlides();
+            updateControls();
+            updateSlideCounter();
+            updateCurrentSlideInfo();
+        }
+        
+        // Agregar nueva etapa
+        function addStage() {
+            const newStage = {
+                title: `ETAPA ${stages.length + 1}`,
+                subtitle: "Descripción de la etapa",
+                image: null
+            };
+            stages.push(newStage);
+            totalSlides = stages.length;
+            renderStagesEditor();
+            renderSlides();
+            updateControls();
+            updateSlideCounter();
+            updateCurrentSlideInfo();
+            showStatus(`✅ Etapa ${stages.length} agregada`, 'success');
+        }
+        
+        // Eliminar última etapa
+        function removeStage() {
+            if (stages.length > 1) {
+                stages.pop();
+                totalSlides = stages.length;
+                if (currentSlide > totalSlides) {
+                    currentSlide = totalSlides;
+                }
+                renderStagesEditor();
+                renderSlides();
+                updateControls();
+                updateSlideCounter();
+                updateCurrentSlideInfo();
+                showStatus('🗑️ Última etapa eliminada', 'success');
+            } else {
+                showStatus('❌ Debe mantener al menos 1 etapa', 'error');
+            }
+        }
+        
+        // Renderizar editor de etapas
+        function renderStagesEditor() {
+            const container = document.getElementById('stagesContainer');
+            container.innerHTML = '';
+            
+            stages.forEach((stage, index) => {
+                const stageDiv = document.createElement('div');
+                stageDiv.className = 'stage-editor';
+                
+                const html = `
+                    <div class="stage-header">
+                        <div class="stage-title">📍 ETAPA ${index + 1}</div>
+                        <div style="font-size: 12px; color: #6B7280;">Etapa ${index + 1} de ${stages.length}</div>
+                    </div>
+                    <div class="stage-input-group">
+                        <label>Título Principal:</label>
+                        <input type="text" value="${stage.title}" onchange="updateStage(${index}, 'title', this.value)">
+                    </div>
+                    <div class="stage-input-group">
+                        <label>Subtítulo (Línea Dorada):</label>
+                        <input type="text" value="${stage.subtitle}" onchange="updateStage(${index}, 'subtitle', this.value)">
+                    </div>
+                    <div class="image-upload-section">
+                        <label>📸 Imagen de la Etapa ${index + 1}:</label>
+                        <input type="file" class="file-input" accept="image/*" data-stage="${index}">
+                        <div id="preview-${index}" class="image-preview" style="display: none;"></div>
+                        <button type="button" class="remove-image-btn" id="remove-${index}" style="display: none;" data-stage="${index}">🗑️ Quitar imagen</button>
+                    </div>
+                `;
+                
+                stageDiv.innerHTML = html;
+                container.appendChild(stageDiv);
+            });
+            
+            // Agregar event listeners para archivos
+            document.querySelectorAll('input[type="file"]').forEach(input => {
+                input.addEventListener('change', function(e) {
+                    const stageIndex = parseInt(this.getAttribute('data-stage'));
+                    handleImageUpload(stageIndex, this);
+                });
+            });
+            
+            // Agregar event listeners para botones eliminar
+            document.querySelectorAll('.remove-image-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const stageIndex = parseInt(this.getAttribute('data-stage'));
+                    removeImage(stageIndex);
+                });
+            });
+            
+            // Habilitar/deshabilitar botón de eliminar
+            document.getElementById('removeBtn').disabled = stages.length <= 1;
+        }
+        
+        // Actualizar etapa
+        function updateStage(index, field, value) {
+            stages[index][field] = value;
+            updateSlideTexts(index + 1);
+        }
+        
+        // Manejo de carga de imágenes
+        function handleImageUpload(stageIndex, input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            // Validar que es una imagen
+            if (!file.type.startsWith('image/')) {
+                showStatus('❌ Solo se permiten archivos de imagen', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Guardar imagen en el array de etapas
+                stages[stageIndex].image = {
+                    src: e.target.result,
+                    name: file.name
+                };
+                
+                // Actualizar preview
+                const preview = document.getElementById(`preview-${stageIndex}`);
+                if (preview) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                
+                // Mostrar botón de eliminar
+                const removeBtn = document.getElementById(`remove-${stageIndex}`);
+                if (removeBtn) {
+                    removeBtn.style.display = 'inline-block';
+                }
+                
+                // Actualizar slide
+                updateSlideImage(stageIndex);
+                
+                showStatus(`✅ Imagen cargada para Etapa ${stageIndex + 1}`, 'success');
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        // Eliminar imagen
+        function removeImage(stageIndex) {
+            // Limpiar imagen del array
+            if (stages[stageIndex].image) {
+                delete stages[stageIndex].image;
+            }
+            
+            // Limpiar preview
+            const preview = document.getElementById(`preview-${stageIndex}`);
+            if (preview) {
+                preview.style.display = 'none';
+                preview.src = '';
+            }
+            
+            // Ocultar botón de eliminar
+            const removeBtn = document.getElementById(`remove-${stageIndex}`);
+            if (removeBtn) {
+                removeBtn.style.display = 'none';
+            }
+            
+            // Actualizar slide
+            updateSlideImage(stageIndex);
+            
+            showStatus(`🗑️ Imagen eliminada de Etapa ${stageIndex + 1}`, 'success');
+        }
+        
+        // Actualizar imagen del slide
+        function updateSlideImage(stageIndex) {
+            const slides = document.querySelectorAll('.slide');
+            const slide = slides[stageIndex];
+            
+            if (!slide) return;
+            
+            const placeholder = slide.querySelector('.slide-placeholder');
+            let image = slide.querySelector('.slide-image');
+            
+            // Crear imagen si no existe
+            if (!image) {
+                image = document.createElement('img');
+                image.className = 'slide-image';
+                slide.appendChild(image);
+            }
+            
+            if (stages[stageIndex].image) {
+                // Mostrar imagen
+                image.src = stages[stageIndex].image.src;
+                image.style.display = 'block';
+                
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+            } else {
+                // Ocultar imagen y mostrar placeholder
+                image.style.display = 'none';
+                
+                if (placeholder) {
+                    placeholder.style.display = 'flex';
+                }
+            }
+        }
+        
+        // Renderizar slides
+        function renderSlides() {
+            const slidesContainer = document.getElementById('carouselSlides');
+            slidesContainer.innerHTML = '';
+            
+            stages.forEach((stage, index) => {
+                const slideDiv = document.createElement('div');
+                slideDiv.className = 'slide';
+                if (index === 0) slideDiv.classList.add('active');
+                
+                slideDiv.innerHTML = `
+                    <div class="slide-placeholder">
+                        <div style="font-size: 24px; margin-bottom: 10px;">🏗️</div>
+                        <div>ETAPA ${index + 1}</div>
+                        <div>Imagen de la etapa ${index + 1}</div>
+                    </div>
+                    <div class="text-overlay">
+                        <div class="text-line1" id="title${index + 1}">${stage.title}</div>
+                        <div class="text-line2" id="subtitle${index + 1}">${stage.subtitle}</div>
+                    </div>
+                    <div class="slide-label">ETAPA ${index + 1}</div>
+                    <img class="logo" src="logo_mc_construcciones_correcto.jpg" alt="MC Construcciones" />
+                `;
+                
+                slidesContainer.appendChild(slideDiv);
+            });
+            
+            // Actualizar imágenes después de un breve delay
+            setTimeout(() => {
+                stages.forEach((stage, index) => {
+                    if (stage.image) {
+                        updateSlideImage(index);
+                    }
+                });
+            }, 200);
+        }
+        
+        // Actualizar textos del slide
+        function updateSlideTexts(slideNumber) {
+            const titleEl = document.getElementById(`title${slideNumber}`);
+            const subtitleEl = document.getElementById(`subtitle${slideNumber}`);
+            
+            if (titleEl) titleEl.textContent = stages[slideNumber - 1].title;
+            if (subtitleEl) subtitleEl.textContent = stages[slideNumber - 1].subtitle;
+        }
+        
+        // Navegación
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                goToSlide(currentSlide + 1);
+            }
+        }
+        
+        function previousSlide() {
+            if (currentSlide > 1) {
+                goToSlide(currentSlide - 1);
+            }
+        }
+        
+        function goToSlide(slideNumber) {
+            // Remover clase active del slide actual
+            document.querySelector('.slide.active').classList.remove('active');
+            document.querySelector('.dot.active').classList.remove('active');
+            
+            // Activar nuevo slide
+            const slides = document.querySelectorAll('.slide');
+            const dots = document.querySelectorAll('.dot');
+            
+            if (slides[slideNumber - 1]) {
+                slides[slideNumber - 1].classList.add('active');
+            }
+            if (dots[slideNumber - 1]) {
+                dots[slideNumber - 1].classList.add('active');
+            }
+            
+            currentSlide = slideNumber;
+            updateControls();
+            updateSlideCounter();
+            updateCurrentSlideInfo();
+        }
+        
+        // Actualizar controles
+        function updateControls() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            if (prevBtn) prevBtn.disabled = currentSlide === 1;
+            if (nextBtn) nextBtn.disabled = currentSlide === totalSlides;
+            
+            // Regenerar dots
+            const dotsContainer = document.getElementById('dotsContainer');
+            dotsContainer.innerHTML = '';
+            
+            for (let i = 1; i <= totalSlides; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot' + (i === currentSlide ? ' active' : '');
+                dot.onclick = () => goToSlide(i);
+                dotsContainer.appendChild(dot);
+            }
+        }
+        
+        // Actualizar contador de slides
+        function updateSlideCounter() {
+            const counter = document.getElementById('slideCounter');
+            if (counter) {
+                counter.textContent = `${currentSlide} / ${totalSlides}`;
+            }
+        }
+        
+        // Actualizar información del slide actual
+        function updateCurrentSlideInfo() {
+            const currentSlideInfo = document.getElementById('currentSlideInfo');
+            const downloadCurrentText = document.getElementById('downloadCurrentText');
+            
+            if (currentSlideInfo && downloadCurrentText) {
+                const stageTitle = stages[currentSlide - 1].title || `ETAPA ${currentSlide}`;
+                const infoText = `${stageTitle} (${currentSlide}/${totalSlides})`;
+                currentSlideInfo.textContent = infoText;
+                downloadCurrentText.textContent = stageTitle;
+            }
+        }
+        
+        // Cambiar formato
+        let currentFormat = 'vertical';
+        document.querySelectorAll('.format-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.format-option').forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+                currentFormat = this.dataset.format;
+                
+                const preview = document.getElementById('carouselPreview');
+                preview.className = `preview ${currentFormat}`;
+            });
+        });
+        
+        // Descargar slide actual
+        async function downloadCurrentSlide() {
+            try {
+                showStatus('🔄 Generando slide...', 'success');
+                
+                const element = document.getElementById('carouselPreview');
+                const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    logging: false
+                });
+                
+                // Crear y descargar imagen del slide actual
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `etapa_${currentSlide}_mc_construcciones.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+                
+                showStatus('✅ Slide descargado exitosamente', 'success');
+            } catch (error) {
+                console.error('Error al generar slide:', error);
+                showStatus('❌ Error al generar slide', 'error');
+            }
+        }
+        
+        // Descargar todos los slides
+        async function downloadAllSlides() {
+            try {
+                showStatus('🔄 Generando todos los slides...', 'success');
+                
+                const element = document.getElementById('carouselPreview');
+                const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    logging: false
+                });
+                
+                // Crear y descargar imagen de todos los slides
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `carrusel_completo_${totalSlides}_etapas.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+                
+                showStatus('✅ Carrusel completo descargado', 'success');
+            } catch (error) {
+                console.error('Error al generar carrusel completo:', error);
+                showStatus('❌ Error al generar carrusel completo', 'error');
+            }
+        }
+        
+        // Mostrar mensajes de estado
+        function showStatus(message, type = 'success') {
+            const status = document.createElement('div');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            document.body.appendChild(status);
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.remove();
+            }, 3000);
+        }
+        
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCarousel();
+        });
+        
+        // Controles de teclado
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') previousSlide();
+            if (e.key === 'ArrowRight') nextSlide();
+        });
+    </script>
+</body>
+</html>
