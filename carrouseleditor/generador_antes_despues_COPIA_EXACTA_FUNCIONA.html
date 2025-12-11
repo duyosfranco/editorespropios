@@ -536,12 +536,6 @@
         let totalSlides = 2;
         let currentSlide = 1;
         let currentFormat = 'vertical';
-        const EXPORT_RESOLUTIONS = {
-            vertical: { width: 1080, height: 1920 },
-            story: { width: 1080, height: 1920 },
-            square: { width: 1080, height: 1080 },
-            horizontal: { width: 1920, height: 1080 }
-        };
 
         const brandPalettes = {
             mc: {
@@ -829,7 +823,7 @@
         }
 
         async function waitForImages() {
-            const images = Array.from(document.querySelectorAll('.slide-image, .slide-logo'))
+            const images = Array.from(document.querySelectorAll('.slide-image'))
                 .filter(img => img.src);
 
             await Promise.all(images.map(img => {
@@ -840,82 +834,6 @@
                     img.onload = img.onerror = () => resolve();
                 });
             }));
-        }
-
-        function getExportScale(element) {
-            const rect = element.getBoundingClientRect();
-            const target = EXPORT_RESOLUTIONS[currentFormat] || { width: rect.width, height: rect.height };
-            const scaleBySize = Math.max(target.width / rect.width, target.height / rect.height);
-            return Math.max(2, Math.ceil(Math.min(4, scaleBySize)));
-        }
-
-        async function ensureLibraries() {
-            const loaders = [];
-
-            if (typeof html2canvas === 'undefined') {
-                loaders.push(loadScript('https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'));
-            }
-
-            await Promise.all(loaders);
-        }
-
-        function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                const existing = Array.from(document.querySelectorAll('script')).find(s => s.src === src);
-                if (existing) {
-                    existing.addEventListener('load', resolve, { once: true });
-                    existing.addEventListener('error', reject, { once: true });
-                    return;
-                }
-
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-        }
-
-        async function captureSlideCanvas(slideIndex) {
-            const previous = currentSlide;
-            if (slideIndex !== currentSlide) {
-                goToSlide(slideIndex);
-                await new Promise(resolve => setTimeout(resolve, 200));
-            }
-
-            const element = document.getElementById('preview');
-            if (!element) {
-                throw new Error('No se encontró la vista previa');
-            }
-
-            await waitForImages();
-            const scale = getExportScale(element);
-            const canvas = await html2canvas(element, {
-                backgroundColor: '#ffffff',
-                scale,
-                logging: false,
-                useCORS: true,
-                allowTaint: true,
-                imageTimeout: 15000
-            });
-
-            if (previous !== currentSlide) {
-                goToSlide(previous);
-            }
-
-            return canvas;
-        }
-
-        function canvasToBlob(canvas) {
-            return new Promise((resolve, reject) => {
-                canvas.toBlob(blob => {
-                    if (!blob) {
-                        reject(new Error('No se pudo generar la imagen'));
-                        return;
-                    }
-                    resolve(blob);
-                }, 'image/png', 1);
-            });
         }
         
         // Actualizar controles
@@ -938,18 +856,29 @@
                 await ensureLibraries();
                 showStatus('🔄 Generando imagen...', 'success');
 
-                const canvas = await captureSlideCanvas(currentSlide);
-                const blob = await canvasToBlob(canvas);
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                const slideNames = ['antes', 'después'];
-                a.href = url;
-                a.download = `${slideNames[currentSlide - 1]}_${document.getElementById('mainTitle').value.toLowerCase()}_${currentFormat}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
+                const element = document.getElementById('preview');
+                await waitForImages();
+                const canvas = await html2canvas(element, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                });
+                
+                // Crear y descargar imagen
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    const slideNames = ['antes', 'después'];
+                    a.href = url;
+                    a.download = `${slideNames[currentSlide - 1]}_${document.getElementById('mainTitle').value.toLowerCase()}_${currentFormat}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+                
                 showStatus('✅ Imagen descargada', 'success');
             } catch (error) {
                 console.error('Error al generar imagen:', error);
@@ -963,9 +892,16 @@
                 await ensureLibraries();
                 showStatus('🔄 Generando ambas imágenes...', 'success');
 
-                await downloadSingleSlide('antes', 1);
-                await downloadSingleSlide('después', 2);
-
+                // Descargar slide antes
+                goToSlide(1);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await downloadSingleSlide('antes');
+                
+                // Descargar slide después
+                goToSlide(2);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await downloadSingleSlide('después');
+                
                 showStatus('✅ Ambas imágenes descargadas', 'success');
             } catch (error) {
                 console.error('Error al generar imágenes:', error);
@@ -974,18 +910,30 @@
         }
 
         // Descargar slide individual
-        async function downloadSingleSlide(suffix, slideIndex) {
-            await ensureLibraries();
-            const canvas = await captureSlideCanvas(slideIndex);
-            const blob = await canvasToBlob(canvas);
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${suffix}_${document.getElementById('mainTitle').value.toLowerCase()}_${currentFormat}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+        async function downloadSingleSlide(suffix) {
+            const element = document.getElementById('preview');
+            await waitForImages();
+            const canvas = await html2canvas(element, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                logging: false,
+                useCORS: true,
+                allowTaint: true
+            });
+            
+            return new Promise((resolve) => {
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${suffix}_${document.getElementById('mainTitle').value.toLowerCase()}_${currentFormat}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    resolve();
+                });
+            });
         }
         
         // Mostrar mensajes de estado
