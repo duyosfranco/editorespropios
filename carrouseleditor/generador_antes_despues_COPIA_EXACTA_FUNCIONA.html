@@ -570,7 +570,9 @@
         ];
         
         // Inicializar el generador
-        function initializeCarousel() {
+        async function initializeCarousel() {
+            await ensureLogoReady();
+            applyLogoToSlides();
             stages = JSON.parse(JSON.stringify(defaultStages));
             totalSlides = stages.length;
             setupEventListeners();

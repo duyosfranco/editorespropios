@@ -543,7 +543,8 @@
         ];
         
         // Inicializar el carrusel
-        function initializeCarousel() {
+        async function initializeCarousel() {
+            await ensureLogoReady();
             stages = JSON.parse(JSON.stringify(defaultStages));
             totalSlides = stages.length;
             renderStagesEditor();
@@ -766,11 +767,12 @@
                 slideDiv.className = 'slide';
                 if (index === 0) slideDiv.classList.add('active');
                 
-                slideDiv.innerHTML = `
-                    <div class="slide-placeholder">
-                        <div style="font-size: 24px; margin-bottom: 10px;">🏗️</div>
-                        <div>ETAPA ${index + 1}</div>
-                        <div>Imagen de la etapa ${index + 1}</div>
+                 const logoSrc = getLogoSrc();
+                 slideDiv.innerHTML = `
+                      <div class="slide-placeholder">
+                          <div style="font-size: 24px; margin-bottom: 10px;">🏗️</div>
+                          <div>ETAPA ${index + 1}</div>
+                          <div>Imagen de la etapa ${index + 1}</div>
                     </div>
                     <div class="text-overlay">
                         <div class="text-line1" id="title${index + 1}">${stage.title}</div>
